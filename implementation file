@@ -226,8 +226,8 @@ int main() {
        printf("2. Add New Password\n");
        printf("3. View Password Vault\n");
        printf("4. Auto-Fill Login\n");
-       printf("5. Exit\n");
-       printf("6. Change Master Password\n");
+       printf("5. Change Master Password\n");
+       printf("6. Exit\n");
        printf("Enter choice: ");
 
         scanf("%d", &choice);
