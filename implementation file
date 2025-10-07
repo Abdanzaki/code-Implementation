@@ -1,0 +1,263 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// Maximum lengths for strings
+#define MAX_STR 100
+#define MAX_PASS 50
+
+// Structure to store password entry
+typedef struct PasswordEntry {
+    char website[MAX_STR];
+    char username[MAX_STR];
+    char encryptedPassword[MAX_PASS];
+    struct PasswordEntry* next;
+} PasswordEntry;
+
+// Structure for the password vault
+typedef struct {
+    PasswordEntry* head;
+    char masterPassword[MAX_PASS];
+} PasswordVault;
+
+// Function prototyes
+void changeMasterPassword(PasswordVault* vault);
+void initVault(PasswordVault* vault);
+int setMasterPassword(PasswordVault* vault);
+void addPassword(PasswordVault* vault);
+void viewPasswords(PasswordVault* vault);
+void autoFillLogin(PasswordVault* vault);
+void encryptPassword(const char* password, const char* masterPassword, char* encrypted);
+void decryptPassword(const char* encrypted, const char* masterPassword, char* decrypted);
+void freeVault(PasswordVault* vault);
+
+// Initialize the vault
+void initVault(PasswordVault* vault) {
+    vault->head = NULL;
+    vault->masterPassword[0] = '\0';
+}
+
+// Set master password
+int setMasterPassword(PasswordVault* vault) {
+    char masterPassword[MAX_PASS];
+    printf("Enter master password (min 8 chars): ");
+    scanf("%s", masterPassword);
+    getchar(); // Clear newline
+    if (strlen(masterPassword) < 8) {
+        printf("Master password must be at least 8 characters long.\n");
+        return 0;
+    }
+    strcpy(vault->masterPassword, masterPassword);
+    printf("Master password set successfully!\n");
+    return 1;
+}
+
+// XOR-based encryption (simple, not secure for production)
+void encryptPassword(const char* password, const char* masterPassword, char* encrypted) {
+    int i, keyLen = strlen(masterPassword);
+    for (i = 0; password[i] != '\0'; i++) {
+        encrypted[i] = password[i] ^ masterPassword[i % keyLen];
+    }
+    encrypted[i] = '\0';
+}
+
+// XOR-based decryption (symmetric to encryption)
+void decryptPassword(const char* encrypted, const char* masterPassword, char* decrypted) {
+    int i, keyLen = strlen(masterPassword);
+    for (i = 0; encrypted[i] != '\0'; i++) {
+        decrypted[i] = encrypted[i] ^ masterPassword[i % keyLen];
+    }
+    decrypted[i] = '\0';
+}
+
+// Add a new password to the vault
+void addPassword(PasswordVault* vault) {
+    if (vault->masterPassword[0] == '\0') {
+        printf("Please set a master password first.\n");
+        return;
+    }
+
+    PasswordEntry* newEntry = (PasswordEntry*)malloc(sizeof(PasswordEntry));
+    if (!newEntry) {
+        printf("Memory allocation failed.\n");
+        return;
+    }
+
+    printf("Enter website: ");
+    scanf("%s", newEntry->website);
+    getchar();
+    printf("Enter username: ");
+    scanf("%s", newEntry->username);
+    getchar();
+    printf("Enter password: ");
+    char password[MAX_PASS];
+    scanf("%s", password);
+    getchar();
+
+    // Encrypt the password
+    encryptPassword(password, vault->masterPassword, newEntry->encryptedPassword);
+
+    // Add to linked list
+    newEntry->next = vault->head;
+    vault->head = newEntry;
+    printf("Password saved successfully!\n");
+}
+
+// View all passwords in the vault
+void viewPasswords(PasswordVault* vault) {
+    if (vault->masterPassword[0] == '\0') {
+        printf("Please set a master password first.\n");
+        return;
+    }
+
+    char inputMaster[MAX_PASS];
+    printf("Enter master password to unlock vault: ");
+    scanf("%s", inputMaster);
+    getchar();
+
+    if (strcmp(inputMaster, vault->masterPassword) != 0) {
+        printf("Incorrect master password.\n");
+        return;
+    }
+
+    if (!vault->head) {
+        printf("Vault is empty.\n");
+        return;
+    }
+
+    printf("\nPassword Vault:\n");
+    printf("----------------------------------------\n");
+    PasswordEntry* current = vault->head;
+    char decrypted[MAX_PASS];
+    while (current) {
+        decryptPassword(current->encryptedPassword, vault->masterPassword, decrypted);
+        printf("Website: %s\nUsername: %s\nPassword: %s\n\n", 
+               current->website, current->username, decrypted);
+        current = current->next;
+    }
+    printf("----------------------------------------\n");
+}
+
+// Auto-fill login credentials
+void autoFillLogin(PasswordVault* vault) {
+    if (vault->masterPassword[0] == '\0') {
+        printf("Please set a master password first.\n");
+        return;
+    }
+
+    char site[MAX_STR], username[MAX_STR];
+    printf("Enter website to auto-fill: ");
+    scanf("%s", site);
+    getchar();
+    printf("Enter username to auto-fill: ");
+    scanf("%s", username);
+    getchar();
+
+    PasswordEntry* current = vault->head;
+    int found = 0;
+    char decrypted[MAX_PASS];
+    while (current) {
+        if (strcmp(current->website, site) == 0 && strcmp(current->username, username) == 0) {
+            decryptPassword(current->encryptedPassword, vault->masterPassword, decrypted);
+            printf("Auto-fill credentials:\n");
+            printf("Website: %s\nUsername: %s\nPassword: %s\n", site, username, decrypted);
+            found = 1;
+            break;
+        }
+        current = current->next;
+    }
+
+    if (!found) {
+        printf("No matching credentials found for %s with username %s.\n", site, username);
+    }
+}
+
+// Free the linked list
+void freeVault(PasswordVault* vault) {
+    PasswordEntry* current = vault->head;
+    while (current) {
+        PasswordEntry* temp = current;
+        current = current->next;
+        free(temp);
+    }
+    vault->head = NULL;
+}
+void changeMasterPassword(PasswordVault* vault) {
+    if (vault->masterPassword[0] == '\0') {
+        printf("Set a master password first.\n");
+        return;
+    }
+
+    char oldPass[MAX_PASS], newPass[MAX_PASS], decrypted[MAX_PASS];
+    printf("Enter current master password: ");
+    scanf("%s", oldPass);
+    getchar();
+    if (strcmp(oldPass, vault->masterPassword) != 0) {
+        printf("Incorrect password.\n");
+        return;
+    }
+
+    printf("Enter new master password (min 8 chars): ");
+    scanf("%s", newPass);
+    getchar();
+    if (strlen(newPass) < 8) {
+        printf("New password too short.\n");
+        return;
+    }
+
+    for (PasswordEntry* cur = vault->head; cur; cur = cur->next) {
+        decryptPassword(cur->encryptedPassword, vault->masterPassword, decrypted);
+        encryptPassword(decrypted, newPass, cur->encryptedPassword);
+    }
+
+    strcpy(vault->masterPassword, newPass);
+    printf("Master password changed!\n");
+}
+
+// Main menu
+int main() {
+    PasswordVault vault;
+    initVault(&vault);
+    int choice;
+
+    while (1) {
+       printf("\nSafePass Password Manager\n");
+       printf("1. Set Master Password\n");
+       printf("2. Add New Password\n");
+       printf("3. View Password Vault\n");
+       printf("4. Auto-Fill Login\n");
+       printf("5. Exit\n");
+       printf("6. Change Master Password\n");
+       printf("Enter choice: ");
+
+        scanf("%d", &choice);
+        getchar();
+
+        switch (choice) {
+    case 1:
+        setMasterPassword(&vault);
+        break;
+    case 2:
+        addPassword(&vault);
+        break;
+    case 3:
+        viewPasswords(&vault);
+        break;
+    case 4:
+        autoFillLogin(&vault);
+        break;
+    case 6:   // <-- add this new case for change password
+        changeMasterPassword(&vault);
+        break;
+    case 5:   // move exit to after 6
+        freeVault(&vault);
+        printf("Exiting SafePass. Goodbye!\n");
+        return 0;
+    default:
+        printf("Invalid choice. Try again.\n");
+
+
+        }
+    }
+    return 0;
+}
