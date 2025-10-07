@@ -246,10 +246,10 @@ int main() {
     case 4:
         autoFillLogin(&vault);
         break;
-    case 6:   // <-- add this new case for change password
+    case 5:   // <-- add this new case for change password
         changeMasterPassword(&vault);
         break;
-    case 5:   // move exit to after 6
+    case 6:   // move exit to after 6
         freeVault(&vault);
         printf("Exiting SafePass. Goodbye!\n");
         return 0;
